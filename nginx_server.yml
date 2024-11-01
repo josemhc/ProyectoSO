@@ -1,0 +1,25 @@
+---
+- hosts: nginx_server
+  become: true
+  tasks:
+    - name: Actualizar lista de paquetes
+      apt:
+        update_cache: yes
+
+    - name: Instalar cowsay
+      apt:
+        name: cowsay
+        state: present
+
+    - name: Instalar nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Copiar archivo index.html al servidor web
+      copy:
+        src: /vagrant/index.html
+        dest: /var/www/html/index.html
+        owner: www-data
+        group: www-data
+        mode: '0644'

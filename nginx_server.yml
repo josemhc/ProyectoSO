@@ -1,5 +1,5 @@
 ---
-- hosts: nginx_server
+- hosts: all
   become: true
   tasks:
     - name: Actualizar lista de paquetes

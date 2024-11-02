@@ -1,5 +1,5 @@
 ---
-- hosts: prometheus_grafana
+- hosts: all
   become: true
   tasks:
     - name: Actualizar lista de paquetes

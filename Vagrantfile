@@ -47,6 +47,8 @@ Vagrant.configure("2") do |config|
     end
   end
 
+  # --------------------------------------------------------------------------
+
   # Segunda máquina virtual - monitoring (Prometheus y Grafana)
   config.vm.define "monitoring" do |monitor|
     monitor.vm.box = "bento/ubuntu-22.04"
@@ -60,7 +62,7 @@ Vagrant.configure("2") do |config|
     # Configuración de red
     monitor.vm.network "private_network", ip: "192.168.50.8"
 
-    config.vm.provision "shell", inline: <<-SHELL
+    monitor.vm.provision "shell", inline: <<-SHELL
       sudo apt update
       sudo apt install -y ansible
       sudo apt install -y software-properties-common
@@ -87,7 +89,7 @@ Vagrant.configure("2") do |config|
 
     SHELL
 
-    config.vm.provision "ansible_local" do |ansible|
+    monitor.vm.provision "ansible_local" do |ansible|
       ansible.playbook = "/vagrant/prometheus_grafana.yml"
     end
   end

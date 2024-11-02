@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s     # Intervalo de scraping predeterminado
+  evaluation_interval: 15s # Intervalo para evaluar reglas
+
+# Reglas de alerta (opcional)
+# Puedes definir reglas de alerta aquí o en un archivo aparte
+rule_files:
+  # - "alert_rules.yml"
+
+# Configuración de scraping
+scrape_configs:
+  # Job para monitorizar Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

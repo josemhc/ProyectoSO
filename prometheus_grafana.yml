@@ -2,22 +2,56 @@
 - hosts: all
   become: true
   tasks:
-    - name: Actualizar lista de paquetes
-      apt:
-        update_cache: yes
+    - name: Crear usuario de Prometheus
+      user:
+        name: prometheus
+        system: yes
+        shell: /usr/sbin/nologin
+
+    - name: Crear directorios necesarios
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: prometheus
+        group: prometheus
+        mode: '0755'
+      loop:
+        - /etc/prometheus
+        - /var/lib/prometheus
 
     - name: Descargar Prometheus
       get_url:
-        url: "https://github.com/prometheus/prometheus/releases/download/v2.41.0/prometheus-2.41.0.linux-amd64.tar.gz"
-        dest: "/tmp/prometheus.tar.gz"
+        url: https://github.com/prometheus/prometheus/releases/download/v2.45.0/prometheus-2.45.0.linux-amd64.tar.gz
+        dest: /tmp/prometheus.tar.gz
 
     - name: Extraer Prometheus
       unarchive:
-        src: "/tmp/prometheus.tar.gz"
-        dest: "/opt/"
+        src: /tmp/prometheus.tar.gz
+        dest: /opt/
         remote_src: yes
+        creates: /opt/prometheus-2.45.0.linux-amd64
 
-    - name: Configurar Prometheus como servicio
+    - name: Mover archivos de Prometheus
+      command: mv /opt/prometheus-2.45.0.linux-amd64 /opt/prometheus
+      args:
+        creates: /opt/prometheus
+
+    - name: Copiar binarios de Prometheus
+      copy:
+        src: /opt/prometheus/
+        dest: /usr/local/bin/
+        remote_src: yes
+        mode: '0755'
+
+    - name: Copiar archivos de configuración de Prometheus
+      copy:
+        src: prometheus.yml
+        dest: /etc/prometheus/prometheus.yml
+        owner: prometheus
+        group: prometheus
+        mode: '0644'
+
+    - name: Crear archivo de servicio systemd para Prometheus
       copy:
         dest: /etc/systemd/system/prometheus.service
         content: |
@@ -27,24 +61,41 @@
           After=network-online.target
 
           [Service]
-          User=nobody
-          ExecStart=/opt/prometheus-2.41.0.linux-amd64/prometheus --config.file=/opt/prometheus-2.41.0.linux-amd64/prometheus.yml
-          Restart=on-failure
+          User=prometheus
+          Group=prometheus
+          Type=simple
+          ExecStart=/usr/local/bin/prometheus \
+            --config.file /etc/prometheus/prometheus.yml \
+            --storage.tsdb.path /var/lib/prometheus/ \
+            --web.console.templates=/etc/prometheus/consoles \
+            --web.console.libraries=/etc/prometheus/console_libraries
 
           [Install]
           WantedBy=multi-user.target
 
+    - name: Recargar systemd
+      systemd:
+        daemon_reload: yes
+
     - name: Iniciar y habilitar Prometheus
       systemd:
         name: prometheus
-        enabled: true
         state: started
+        enabled: yes
+        
+    - name: Añadir el repositorio de Grafana
+      apt_key:
+        url: https://packages.grafana.com/gpg.key
+        state: present
 
-    - name: Agregar repositorio de Grafana
+    - name: Añadir el repositorio de Grafana a sources.list
       apt_repository:
         repo: "deb https://packages.grafana.com/oss/deb stable main"
         state: present
         filename: grafana
+
+    - name: Actualizar el índice de paquetes
+      apt:
         update_cache: yes
 
     - name: Instalar Grafana
@@ -53,7 +104,7 @@
         state: present
 
     - name: Iniciar y habilitar Grafana
-      systemd:
+      service:
         name: grafana-server
-        enabled: true
         state: started
+        enabled: yes
